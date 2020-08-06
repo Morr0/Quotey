@@ -34,7 +34,7 @@ namespace Quotey
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
             // Internal services
-            services.AddSingleton<IQuotesService, MockQuotesService>();
+            services.AddSingleton<IQuotesService, QuotesService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline
