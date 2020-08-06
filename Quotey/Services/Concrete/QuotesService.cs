@@ -2,7 +2,7 @@
 
 namespace Quotey.Services
 {
-    public class QuotesService : IQuotesService
+    public class QuotesService// : IQuotesService
     {
         public Quote GetRandomQuote()
         {

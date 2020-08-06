@@ -8,6 +8,8 @@ namespace Quotey.Services
 {
     public interface IQuotesService
     {
-        Quote GetRandomQuote();
+        Task<Quote> GetRandomQuote();
+        Task<List<string>> GetQuoters();
+        Task<Quote> GetQuoteByQuoter(string quoter);
     }
 }

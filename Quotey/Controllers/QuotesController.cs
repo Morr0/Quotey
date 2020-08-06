@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Quotey.Controllers.Queries;
 using Quotey.Models;
 using Quotey.Services;
 
@@ -25,11 +26,22 @@ namespace Quotey.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetRandomQuote()
+        public async Task<IActionResult> GetRandomQuote([FromQuery] QuotesQuery query)
         {
-            var result = _quotesService.GetRandomQuote();
+            Quote quote = null;
+            Console.WriteLine(query.Quoter);
+            if (string.IsNullOrEmpty(query.Quoter))
+                quote = await _quotesService.GetRandomQuote();
+            else
+                quote = await _quotesService.GetQuoteByQuoter(query.Quoter);
 
-            return Ok(_mapper.Map<QuoteReadDTO>(result));
+            return Ok(_mapper.Map<QuoteReadDTO>(quote));
+        }
+
+        [HttpGet("quoters")]
+        public async Task<IActionResult> GetQuoters()
+        {
+            return Ok(await _quotesService.GetQuoters());
         }
     }
 }
