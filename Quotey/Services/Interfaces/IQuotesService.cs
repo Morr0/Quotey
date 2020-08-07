@@ -10,5 +10,6 @@ namespace Quotey.Services
     {
         Task<Quote> GetRandomQuote();
         Task<Quote> GetQuoteById(int id);
+        Task<List<Quote>> GetRandomQuotes(int amount);
     }
 }

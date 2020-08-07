@@ -24,8 +24,6 @@ namespace Quotey.Services
             RegionEndpoint region = RegionEndpoint.APSoutheast2;
             _client = new AmazonDynamoDBClient(region);
 
-            Console.WriteLine("1");
-
             // Block until setup is done
             Task.WaitAll(setupTablesIfNotSetup());
 
@@ -39,7 +37,6 @@ namespace Quotey.Services
 
         private async Task setupTablesIfNotSetup()
         {
-            Console.WriteLine("2");
             bool quoteyQuoteTableExists = false;
 
             // Check for whether the quotey_quote table exists
@@ -48,8 +45,6 @@ namespace Quotey.Services
                 await _client.DescribeTableAsync(QUOTES_TABLE);
                 quoteyQuoteTableExists = true;
             } catch (ResourceNotFoundException) { }
-
-            Console.WriteLine("3");
 
             // Create table if does not exist
             if (!quoteyQuoteTableExists)
@@ -94,46 +89,59 @@ namespace Quotey.Services
             return await GetQuoteById(randomQuoteId);
         }
 
-        /*public async List<Quote> GetRandomQuotes(int amount = 10)
+        public async Task<List<Quote>> GetRandomQuotes(int amount)
         {
             int count = await getQuotesTableCount();
+            // To not exceed over limit of count
+            int amountLeft = Math.Min(count, amount);
+            Console.WriteLine($"In: {amount} LEFT: {amountLeft}");
 
-            HashSet<int> ids = new HashSet<int>(amount);
-            List<Dictionary<string, AttributeValue>> idsValues = new List<Dictionary<string, AttributeValue>>(amount);
+            HashSet<int> ids = new HashSet<int>(amountLeft);
+            Dictionary<string, AttributeValue> idsValues = new Dictionary<string, AttributeValue>(amountLeft);
+            List<Quote> quotes = new List<Quote>(amountLeft);
+
             // Generate random Id that is not within list
             // Use amount to represent how much left
-            while (amount > 1)
+            while (amountLeft > 1)
             {
                 int randId = _random.Next(1, count + 1);
-                
+
                 // Make sure it is not already fetched
                 if (!ids.Contains(randId))
                 {
                     // It is a long tree since batch item fetch can allow multiple keys
                     ids.Add(randId);
-                    idsValues.Add(new Dictionary<string, AttributeValue>
-                    {
-                        {"Id", new AttributeValue{ N = randId.ToString() }}
-                    });
+                    idsValues.Add("Id", new AttributeValue { N = randId.ToString() });
 
-                    amount--;
-                }
-
-                BatchGetItemRequest request = new BatchGetItemRequest(new Dictionary<string, KeysAndAttributes>
-                { {QUOTES_TABLE, new KeysAndAttributes { Keys = idsValues } } });
-                BatchGetItemResponse response = await _client.BatchGetItemAsync(request);
-
-                // Extract data from the complex structure of response
-                List<Quote> quotes = new List<Quote>();
-                foreach ()
-                {
-
-                }
-                response.Responses[QUOTES_TABLE].
+                    amountLeft--;
+                } 
             }
 
+            BatchGetItemRequest request = new BatchGetItemRequest(new Dictionary<string, KeysAndAttributes>
+            { {QUOTES_TABLE, new KeysAndAttributes { Keys = new List<Dictionary<string, AttributeValue>>{
+                idsValues
+            } } } });
+            BatchGetItemResponse response = await _client.BatchGetItemAsync(request);
 
-        }*/
+            Console.WriteLine("HERE1");
+            // Extract data from the complex structure of response
+            // Will return records
+            Console.WriteLine(response.Responses[QUOTES_TABLE].Count);
+            foreach (Dictionary<string, AttributeValue> pair in response.Responses[QUOTES_TABLE])
+            {
+                Console.WriteLine("HERE2");
+                // Will fetch all attributes of the record
+                /*foreach (KeyValuePair<string, AttributeValue> dataTypeAndValue in pair)
+                {
+                    Console.WriteLine($"Key: {dataTypeAndValue.Key}   Value: {dataTypeAndValue.Value.S}");
+                }*/
+
+                quotes.Add(Quote.ToQuoteFromTable(pair));
+            }
+            
+
+            return quotes;
+        }
 
         private async Task<int> getQuotesTableCount()
         {
@@ -141,6 +149,7 @@ namespace Quotey.Services
             // The reason for the one, at the start I only inserted one record and
             // since Dynamodb takes 6 hours to update the item count,
             // so it is useful for the first 6 hours of production and that is it.
+            Console.WriteLine($"COUNT {description.Table.ItemCount}");
             int count = description.Table.ItemCount == 0 ? 1 : (int)description.Table.ItemCount;
 
             return _random.Next(1, count + 1);

@@ -27,8 +27,16 @@ namespace Quotey.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetRandomQuote([FromQuery] QuoteQuery query)
+        public async Task<IActionResult> GetRandomQuote([FromQuery] QuotesQuery query)
         {
+            // 
+            /*
+            if (query.Amount != 1)
+            {
+                return await GetRandomQuotes(query as QuotesQuery);
+            }
+            */
+
             Quote quote = null;
             if (query.Id == null)
                 quote = await _quotesService.GetRandomQuote();
@@ -39,6 +47,13 @@ namespace Quotey.Controllers
                 return NotFound();
 
             return Ok(_mapper.Map<QuoteReadDTO>(quote));
+        }
+
+        // Private for seperation of concers
+        private async Task<IActionResult> GetRandomQuotes([FromBody] QuotesQuery query)
+        {
+            return Ok(_mapper.Map<List<QuoteReadDTO>>
+                (await _quotesService.GetRandomQuotes(query.Amount)));
         }
     }
 }
