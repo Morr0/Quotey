@@ -2,6 +2,7 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Amazon.Extensions.NETCore.Setup;
+using Microsoft.AspNetCore.Http;
 using Quotey.Models;
 using System;
 using System.Collections.Generic;
@@ -11,7 +12,12 @@ namespace Quotey.Services
 {
     public class QuotesService : IQuotesService
     {
+        // Table 
+        public static string QUOTES_TABLE = "quotey_quote";
+
         private AmazonDynamoDBClient _client;
+        private Random _random;
+
         public QuotesService()
         {
             RegionEndpoint region = RegionEndpoint.APSoutheast2;
@@ -21,6 +27,8 @@ namespace Quotey.Services
 
             // Block until setup is done
             Task.WaitAll(setupTablesIfNotSetup());
+
+            _random = new Random();
         }
 
         ~QuotesService()
@@ -36,7 +44,7 @@ namespace Quotey.Services
             // Check for whether the quotey_quote table exists
             try
             {
-                await _client.DescribeTableAsync("quotey_quote");
+                await _client.DescribeTableAsync(QUOTES_TABLE);
                 quoteyQuoteTableExists = true;
             } catch (ResourceNotFoundException) { }
 
@@ -63,7 +71,7 @@ namespace Quotey.Services
                 // Table creation request
                 CreateTableRequest req = new CreateTableRequest
                 {
-                    TableName = "quotey_quote",
+                    TableName = QUOTES_TABLE,
                     KeySchema = keySchema,
                     AttributeDefinitions = attributes,
                     BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -77,22 +85,35 @@ namespace Quotey.Services
             }
         }
 
-        public async Task<Quote> GetQuoteByQuoter(string quoter)
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public async Task<List<string>> GetQuoters()
-        {
-            throw new System.NotImplementedException();
-        }
-
         public async Task<Quote> GetRandomQuote()
         {
-            return new Quote
+            DescribeTableResponse description = await _client.DescribeTableAsync(QUOTES_TABLE);
+
+            // The reason for the one, at the start I only inserted one record and
+            // since Dynamodb takes 6 hours to update the item count,
+            // so it is useful for the first 6 hours of production and that is it.
+            int count = description.Table.ItemCount == 0 ? 1 : (int) description.Table.ItemCount;
+
+            int randomQuoteId = _random.Next(1, count + 1);
+
+            // Request quote
+            GetItemRequest itemRequest = new GetItemRequest
+            {
+                TableName = QUOTES_TABLE,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    {"Id", new AttributeValue{ N = randomQuoteId.ToString() } }
+                }
+            };
+
+            GetItemResponse item = await _client.GetItemAsync(itemRequest);
+            return Quote.ToQuoteFromTable(item.Item);
+
+            // MOCK
+            /*return new Quote
             {
                 Quoter = "Rami"
-            };
+            };*/
         }
     }
 }

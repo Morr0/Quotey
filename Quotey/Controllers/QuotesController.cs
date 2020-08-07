@@ -28,20 +28,16 @@ namespace Quotey.Controllers
         [HttpGet]
         public async Task<IActionResult> GetRandomQuote([FromQuery] QuotesQuery query)
         {
-            Quote quote = null;
+            /*Quote quote = null;
             Console.WriteLine(query.Quoter);
             if (string.IsNullOrEmpty(query.Quoter))
                 quote = await _quotesService.GetRandomQuote();
             else
                 quote = await _quotesService.GetQuoteByQuoter(query.Quoter);
+            */
 
+            Quote quote = await _quotesService.GetRandomQuote();
             return Ok(_mapper.Map<QuoteReadDTO>(quote));
-        }
-
-        [HttpGet("quoters")]
-        public async Task<IActionResult> GetQuoters()
-        {
-            return Ok(await _quotesService.GetQuoters());
         }
     }
 }

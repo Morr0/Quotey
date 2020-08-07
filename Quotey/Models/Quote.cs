@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using Amazon.DynamoDBv2.Model;
+using AutoMapper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,6 +28,19 @@ namespace Quotey.Models
         public string DateCreated { get; set; }
 
         public string DateApproved { get; set; }
+
+        public static Quote ToQuoteFromTable(Dictionary<string, AttributeValue> item)
+        {
+            return new Quote
+            {
+                Id = int.Parse(item["Id"].N),
+                Text = item["Text"].S,
+                Quoter = item["Quoter"].S,
+                SubmitterEmail = item["SubmitterEmail"].S,
+                DateCreated = item["SubmitterEmail"].S,
+                DateApproved = item["SubmitterEmail"].S
+            };
+        }
 
     }
 
