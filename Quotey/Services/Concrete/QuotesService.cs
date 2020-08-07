@@ -15,6 +15,7 @@ namespace Quotey.Services
     {
         // Table 
         public static string QUOTES_TABLE = "quotey_quote";
+        public static string QUOTES_AUTHORS_TABLE = "quotey_quote_author";
 
         private AmazonDynamoDBClient _client;
         private Random _random;
@@ -37,6 +38,7 @@ namespace Quotey.Services
 
         private async Task setupTablesIfNotSetup()
         {
+            #region quotey_quote
             bool quoteyQuoteTableExists = false;
 
             // Check for whether the quotey_quote table exists
@@ -79,6 +81,54 @@ namespace Quotey.Services
 
                 Console.WriteLine("quotey_quote successfully created");
             }
+            #endregion
+
+            #region quotey_quote_author
+            // Motivation: to not use GSI on other tables and worry about provisioning
+            // for each new author, store a new record of hash key (Author) and
+            // an array of quote primary keys assosciated with it (Quotes).
+
+            bool quoteyQuotesAuthorsTableExists = false;
+            try
+            {
+                await _client.DescribeTableAsync(QUOTES_AUTHORS_TABLE);
+                quoteyQuotesAuthorsTableExists = true;
+            } catch (ResourceNotFoundException) { }
+
+            if (!quoteyQuotesAuthorsTableExists)
+            {
+                Console.WriteLine("quotey_quote_author does not exist will try to create one");
+
+                // Table attributes
+                List<AttributeDefinition> attributes = new List<AttributeDefinition>
+                {
+                    // Only the indexes
+                    new AttributeDefinition("Author", ScalarAttributeType.S),
+                };
+
+                // Key Schema
+                List<KeySchemaElement> keySchema = new List<KeySchemaElement>
+                {
+                    new KeySchemaElement("Author", KeyType.HASH)
+                };
+
+                // Table creation request
+                CreateTableRequest req = new CreateTableRequest
+                {
+                    TableName = QUOTES_AUTHORS_TABLE,
+                    KeySchema = keySchema,
+                    AttributeDefinitions = attributes,
+                    BillingMode = BillingMode.PAY_PER_REQUEST,
+                };
+
+                CreateTableResponse res = await _client.CreateTableAsync(req);
+                if (res.HttpStatusCode != System.Net.HttpStatusCode.OK)
+                    throw new Exception("Could not create table quotey_quote_author");
+
+                Console.WriteLine("quotey_quote_author successfully created");
+            }
+            
+            #endregion
         }
 
         #region get random
