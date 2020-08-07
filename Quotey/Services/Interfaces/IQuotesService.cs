@@ -9,5 +9,6 @@ namespace Quotey.Services
     public interface IQuotesService
     {
         Task<Quote> GetRandomQuote();
+        Task<Quote> GetQuoteById(int id);
     }
 }

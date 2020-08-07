@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Threading.Tasks;
+using Amazon.S3.Model;
 using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -26,17 +27,17 @@ namespace Quotey.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetRandomQuote([FromQuery] QuotesQuery query)
+        public async Task<IActionResult> GetRandomQuote([FromQuery] QuoteQuery query)
         {
-            /*Quote quote = null;
-            Console.WriteLine(query.Quoter);
-            if (string.IsNullOrEmpty(query.Quoter))
+            Quote quote = null;
+            if (query.Id == null)
                 quote = await _quotesService.GetRandomQuote();
             else
-                quote = await _quotesService.GetQuoteByQuoter(query.Quoter);
-            */
+                quote = await _quotesService.GetQuoteById((int) query.Id);
 
-            Quote quote = await _quotesService.GetRandomQuote();
+            if (quote == null)
+                return NotFound();
+
             return Ok(_mapper.Map<QuoteReadDTO>(quote));
         }
     }

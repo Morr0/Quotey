@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Quotey.Services.Mock
 {
-    public class MockQuotesService : IQuotesService
+    public class MockQuotesService// : IQuotesService
     {
         private readonly Dictionary<string, List<Quote>> _quotesByQuoters = new Dictionary<string, List<Quote>>();
         public MockQuotesService()
