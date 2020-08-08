@@ -131,7 +131,7 @@ namespace Quotey.Services
             #endregion
         }
 
-        #region get random
+        #region quotes
 
         public async Task<Quote> GetRandomQuote()
         { 
@@ -144,15 +144,14 @@ namespace Quotey.Services
             int count = await getQuotesTableCount();
             // To not exceed over limit of count
             int amountLeft = Math.Min(count, amount);
-            Console.WriteLine($"In: {amount} LEFT: {amountLeft}");
 
             HashSet<int> ids = new HashSet<int>(amountLeft);
-            Dictionary<string, AttributeValue> idsValues = new Dictionary<string, AttributeValue>(amountLeft);
+            List<Dictionary<string, AttributeValue>> idsValuesToRequest = new List<Dictionary<string, AttributeValue>>();
             List<Quote> quotes = new List<Quote>(amountLeft);
 
             // Generate random Id that is not within list
             // Use amount to represent how much left
-            while (amountLeft > 1)
+            while (amountLeft > 0)
             {
                 int randId = _random.Next(1, count + 1);
 
@@ -161,35 +160,24 @@ namespace Quotey.Services
                 {
                     // It is a long tree since batch item fetch can allow multiple keys
                     ids.Add(randId);
-                    idsValues.Add("Id", new AttributeValue { N = randId.ToString() });
+                    idsValuesToRequest.Add(new Dictionary<string, AttributeValue>
+                    { {"Id", new AttributeValue { N = randId.ToString() } } });
 
                     amountLeft--;
                 } 
             }
 
             BatchGetItemRequest request = new BatchGetItemRequest(new Dictionary<string, KeysAndAttributes>
-            { {QUOTES_TABLE, new KeysAndAttributes { Keys = new List<Dictionary<string, AttributeValue>>{
-                idsValues
-            } } } });
+            { {QUOTES_TABLE, new KeysAndAttributes { Keys =  idsValuesToRequest } } });
             BatchGetItemResponse response = await _client.BatchGetItemAsync(request);
 
-            Console.WriteLine("HERE1");
             // Extract data from the complex structure of response
             // Will return records
-            Console.WriteLine(response.Responses[QUOTES_TABLE].Count);
             foreach (Dictionary<string, AttributeValue> pair in response.Responses[QUOTES_TABLE])
             {
-                Console.WriteLine("HERE2");
-                // Will fetch all attributes of the record
-                /*foreach (KeyValuePair<string, AttributeValue> dataTypeAndValue in pair)
-                {
-                    Console.WriteLine($"Key: {dataTypeAndValue.Key}   Value: {dataTypeAndValue.Value.S}");
-                }*/
-
                 quotes.Add(Quote.ToQuoteFromTable(pair));
             }
             
-
             return quotes;
         }
 
@@ -199,10 +187,8 @@ namespace Quotey.Services
             // The reason for the one, at the start I only inserted one record and
             // since Dynamodb takes 6 hours to update the item count,
             // so it is useful for the first 6 hours of production and that is it.
-            Console.WriteLine($"COUNT {description.Table.ItemCount}");
-            int count = description.Table.ItemCount == 0 ? 1 : (int)description.Table.ItemCount;
 
-            return _random.Next(1, count + 1);
+            return description.Table.ItemCount == 0 ? 1 : (int) description.Table.ItemCount;
         }
 
         public async Task<Quote> GetQuoteById(int id)
@@ -222,6 +208,20 @@ namespace Quotey.Services
                 return null;
 
             return Quote.ToQuoteFromTable(response.Item);
+        }
+
+        #endregion
+
+        #region quotes by authors
+        public Task<List<string>> GetAuthors()
+        {
+
+            throw new NotImplementedException();
+        }
+
+        public Task<List<Quote>> GetQuotesByAuthorName()
+        {
+            throw new NotImplementedException();
         }
 
         #endregion

@@ -29,13 +29,10 @@ namespace Quotey.Controllers
         [HttpGet]
         public async Task<IActionResult> GetRandomQuote([FromQuery] QuotesQuery query)
         {
-            // 
-            /*
             if (query.Amount != 1)
             {
-                return await GetRandomQuotes(query as QuotesQuery);
+                return await GetRandomQuotes(query);
             }
-            */
 
             Quote quote = null;
             if (query.Id == null)
