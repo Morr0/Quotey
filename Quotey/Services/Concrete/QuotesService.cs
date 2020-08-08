@@ -193,11 +193,11 @@ namespace Quotey.Services
         private async Task<int> getTableCount(string table)
         {
             DescribeTableResponse description = await _client.DescribeTableAsync(table);
-            // The reason for the one, at the start I only inserted one record and
+            // The reason for the 2, at the start I only inserted 2 records and
             // since Dynamodb takes 6 hours to update the item count,
             // so it is useful for the first 6 hours of production and that is it.
 
-            return description.Table.ItemCount == 0 ? 1 : (int) description.Table.ItemCount;
+            return description.Table.ItemCount == 0 ? 2 : (int) description.Table.ItemCount;
         }
 
         public async Task<Quote> GetQuoteById(int id)
@@ -222,10 +222,30 @@ namespace Quotey.Services
         #endregion
 
         #region quotes by authors
-        public Task<List<string>> GetAuthors()
-        {
 
-            throw new NotImplementedException();
+        public async Task<List<string>> GetAuthors()
+        {
+            int count = await getTableCount(QUOTES_AUTHORS_TABLE);
+            int amount = 10;
+            amount = Math.Min(count, amount);
+
+            // Because we are fetching the authors without a specific filter
+            ScanRequest scanRequest = new ScanRequest
+            {
+                TableName = QUOTES_AUTHORS_TABLE,
+                Limit = amount,
+            };
+
+            // Scan
+            ScanResponse response = await _client.ScanAsync(scanRequest);
+
+            List<string> authors = new List<string>(response.Count);
+            foreach (Dictionary<string, AttributeValue> pair in response.Items)
+            {
+                authors.Add(pair[QUOTES_AUTHORS_TABLE_HASH_KEY].S);
+            }
+
+            return authors;
         }
 
         public Task<List<Quote>> GetQuotesByAuthorName()
