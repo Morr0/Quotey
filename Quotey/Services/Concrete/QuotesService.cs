@@ -13,9 +13,18 @@ namespace Quotey.Services
 {
     public class QuotesService : IQuotesService
     {
-        // Table 
+
+        #region table definitions
+
+        // Quotes table
         public static string QUOTES_TABLE = "quotey_quote";
+        public static string QUOTES_TABLE_HASH_KEY = "Id";
+
+        // Quotes authors table
         public static string QUOTES_AUTHORS_TABLE = "quotey_quote_author";
+        public static string QUOTES_AUTHORS_TABLE_HASH_KEY = "Author";
+
+        #endregion
 
         private AmazonDynamoDBClient _client;
         private Random _random;
@@ -57,13 +66,13 @@ namespace Quotey.Services
                 List<AttributeDefinition> attributes = new List<AttributeDefinition>
                 {
                     // Only the indexes
-                    new AttributeDefinition("Id", ScalarAttributeType.N),
+                    new AttributeDefinition(QUOTES_TABLE_HASH_KEY, ScalarAttributeType.N),
                 };
 
                 // Key Schema
                 List<KeySchemaElement> keySchema = new List<KeySchemaElement>
                 {
-                    new KeySchemaElement("Id", KeyType.HASH)
+                    new KeySchemaElement(QUOTES_TABLE_HASH_KEY, KeyType.HASH)
                 };
 
                 // Table creation request
@@ -103,13 +112,13 @@ namespace Quotey.Services
                 List<AttributeDefinition> attributes = new List<AttributeDefinition>
                 {
                     // Only the indexes
-                    new AttributeDefinition("Author", ScalarAttributeType.S),
+                    new AttributeDefinition(QUOTES_AUTHORS_TABLE_HASH_KEY, ScalarAttributeType.S),
                 };
 
                 // Key Schema
                 List<KeySchemaElement> keySchema = new List<KeySchemaElement>
                 {
-                    new KeySchemaElement("Author", KeyType.HASH)
+                    new KeySchemaElement(QUOTES_AUTHORS_TABLE_HASH_KEY, KeyType.HASH)
                 };
 
                 // Table creation request
@@ -135,13 +144,13 @@ namespace Quotey.Services
 
         public async Task<Quote> GetRandomQuote()
         { 
-            int randomQuoteId = _random.Next(1, (await getQuotesTableCount()) + 1);
+            int randomQuoteId = _random.Next(1, (await getTableCount(QUOTES_TABLE)) + 1);
             return await GetQuoteById(randomQuoteId);
         }
 
         public async Task<List<Quote>> GetRandomQuotes(int amount)
         {
-            int count = await getQuotesTableCount();
+            int count = await getTableCount(QUOTES_TABLE);
             // To not exceed over limit of count
             int amountLeft = Math.Min(count, amount);
 
@@ -161,7 +170,7 @@ namespace Quotey.Services
                     // It is a long tree since batch item fetch can allow multiple keys
                     ids.Add(randId);
                     idsValuesToRequest.Add(new Dictionary<string, AttributeValue>
-                    { {"Id", new AttributeValue { N = randId.ToString() } } });
+                    { {QUOTES_TABLE_HASH_KEY, new AttributeValue { N = randId.ToString() } } });
 
                     amountLeft--;
                 } 
@@ -181,9 +190,9 @@ namespace Quotey.Services
             return quotes;
         }
 
-        private async Task<int> getQuotesTableCount()
+        private async Task<int> getTableCount(string table)
         {
-            DescribeTableResponse description = await _client.DescribeTableAsync(QUOTES_TABLE);
+            DescribeTableResponse description = await _client.DescribeTableAsync(table);
             // The reason for the one, at the start I only inserted one record and
             // since Dynamodb takes 6 hours to update the item count,
             // so it is useful for the first 6 hours of production and that is it.
@@ -198,7 +207,7 @@ namespace Quotey.Services
                 TableName = QUOTES_TABLE,
                 Key = new Dictionary<string, AttributeValue>
                 {
-                    {"Id", new AttributeValue{ N = id.ToString() } }
+                    {QUOTES_TABLE_HASH_KEY, new AttributeValue{ N = id.ToString() } }
                 }
             };
 
