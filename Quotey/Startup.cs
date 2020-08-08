@@ -33,6 +33,9 @@ namespace Quotey
             // All mappings are within each model's files
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
+            // Swagger
+            services.AddSwaggerGen();
+
             // Internal services
             services.AddSingleton<IQuotesService, QuotesService>();
         }
@@ -44,6 +47,12 @@ namespace Quotey
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            app.UseSwagger();
+            app.UseSwaggerUI(o =>
+            {
+                o.SwaggerEndpoint("/swagger/v1/swagger.json", "Quotey");
+            });
 
             app.UseHttpsRedirection();
 
