@@ -213,7 +213,9 @@ namespace Quotey.Services
             };
 
             GetItemResponse response = await _client.GetItemAsync(itemRequest);
-            if (response.HttpStatusCode == System.Net.HttpStatusCode.BadRequest)
+            if (response.HttpStatusCode == System.Net.HttpStatusCode.BadRequest ||
+                // Id does not exist
+                !response.Item.ContainsKey(QUOTES_TABLE_HASH_KEY))
                 // The reason for BadRequest when item does not exist is because of AWS instead 404
                 return null;
 
@@ -290,12 +292,10 @@ namespace Quotey.Services
 
             GetItemResponse authorResponse = await _client.GetItemAsync(authorRequest);
             Console.WriteLine(authorResponse.HttpStatusCode);
-            if (authorResponse.HttpStatusCode == System.Net.HttpStatusCode.BadRequest)
-                return null; // Just because anything has happened, most likely author does not exist
-
-            // If no quotes from the author
-            if (!authorResponse.Item.ContainsKey(QUOTES_AUTHORS_TABLE_QUOTES_IDS))
-                return new List<Quote>();
+            if (authorResponse.HttpStatusCode == System.Net.HttpStatusCode.BadRequest ||
+                // Does not exist
+                !authorResponse.Item.ContainsKey(QUOTES_AUTHORS_TABLE_QUOTES_IDS))
+                return null;
 
             // For data aggregation that is why will not map from string to int for id, will use it as string
             List<string> idsStrings = authorResponse.Item[QUOTES_AUTHORS_TABLE_QUOTES_IDS].NS;
