@@ -155,7 +155,7 @@ namespace Quotey.Services
             // To not exceed over limit of count
             int amountLeft = Math.Min(count, amount);
 
-            HashSet<int> ids = new HashSet<int>(amountLeft);
+            HashSet<string> ids = new HashSet<string>(amountLeft);
             List<Dictionary<string, AttributeValue>> idsValuesToRequest = new List<Dictionary<string, AttributeValue>>();
             List<Quote> quotes = new List<Quote>(amountLeft);
 
@@ -163,7 +163,7 @@ namespace Quotey.Services
             // Use amount to represent how much left
             while (amountLeft > 0)
             {
-                int randId = _random.Next(1, count + 1);
+                string randId = (_random.Next(1, count + 1)).ToString();
 
                 // Make sure it is not already fetched
                 if (!ids.Contains(randId))
@@ -171,24 +171,13 @@ namespace Quotey.Services
                     // It is a long tree since batch item fetch can allow multiple keys
                     ids.Add(randId);
                     idsValuesToRequest.Add(new Dictionary<string, AttributeValue>
-                    { {QUOTES_TABLE_HASH_KEY, new AttributeValue { N = randId.ToString() } } });
+                    { {QUOTES_TABLE_HASH_KEY, new AttributeValue { N = randId } } });
 
                     amountLeft--;
                 } 
             }
 
-            BatchGetItemRequest request = new BatchGetItemRequest(new Dictionary<string, KeysAndAttributes>
-            { {QUOTES_TABLE, new KeysAndAttributes { Keys =  idsValuesToRequest } } });
-            BatchGetItemResponse response = await _client.BatchGetItemAsync(request);
-
-            // Extract data from the complex structure of response
-            // Will return records
-            foreach (Dictionary<string, AttributeValue> pair in response.Responses[QUOTES_TABLE])
-            {
-                quotes.Add(Quote.ToQuoteFromTable(pair));
-            }
-            
-            return quotes;
+            return await getQuotesByIds(ids);
         }
 
         private async Task<int> getTableCount(string table)
@@ -197,7 +186,6 @@ namespace Quotey.Services
             // The reason for the 2, at the start I only inserted 2 records and
             // since Dynamodb takes 6 hours to update the item count,
             // so it is useful for the first 6 hours of production and that is it.
-
             return description.Table.ItemCount == 0 ? 2 : (int) description.Table.ItemCount;
         }
 
@@ -222,7 +210,7 @@ namespace Quotey.Services
             return Quote.ToQuoteFromTable(response.Item);
         }
 
-        private async Task<List<Quote>> getQuotesByIds(List<string> ids)
+        private async Task<List<Quote>> getQuotesByIds(IEnumerable<string> ids)
         {
             // ETL
             List<Dictionary<string, AttributeValue>> listOfIdsToBeFetched 
@@ -291,7 +279,6 @@ namespace Quotey.Services
             };
 
             GetItemResponse authorResponse = await _client.GetItemAsync(authorRequest);
-            Console.WriteLine(authorResponse.HttpStatusCode);
             if (authorResponse.HttpStatusCode == System.Net.HttpStatusCode.BadRequest ||
                 // Does not exist
                 !authorResponse.Item.ContainsKey(QUOTES_AUTHORS_TABLE_QUOTES_IDS))
