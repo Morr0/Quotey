@@ -9,9 +9,6 @@ namespace Quotey.Controllers.Queries
     public class QuotesQuery
     {
         [NotNull]
-        public int? Id { get; set; }
-
-        [NotNull]
         public string Author { get; set; }
 
         // Amount = size of page

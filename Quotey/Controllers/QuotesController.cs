@@ -41,13 +41,17 @@ namespace Quotey.Controllers
                 return await GetRandomQuotes(query);
             }
 
-            Quote quote = null;
-            if (query.Id == null)
-                quote = await _quotesService.GetRandomQuote();
-            else
-                quote = await _quotesService.GetQuoteById((int)query.Id);
-                
+            Quote quote = await _quotesService.GetRandomQuote();
+            if (quote == null)
+                return NotFound();
 
+            return Ok(_mapper.Map<QuoteReadDTO>(quote));
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetQuoteById([FromRoute] int id)
+        {
+            Quote quote = await _quotesService.GetQuoteById(id.ToString());
             if (quote == null)
                 return NotFound();
 

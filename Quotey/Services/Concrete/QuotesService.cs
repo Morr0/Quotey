@@ -2,6 +2,7 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Amazon.Extensions.NETCore.Setup;
+using Amazon.S3.Model;
 using Microsoft.AspNetCore.Http;
 using Quotey.Models;
 using System;
@@ -146,7 +147,7 @@ namespace Quotey.Services
         public async Task<Quote> GetRandomQuote()
         { 
             int randomQuoteId = _random.Next(1, (await getTableCount(QUOTES_TABLE)) + 1);
-            return await GetQuoteById(randomQuoteId);
+            return await GetQuoteById(randomQuoteId.ToString());
         }
 
         public async Task<List<Quote>> GetRandomQuotes(int amount)
@@ -189,25 +190,13 @@ namespace Quotey.Services
             return description.Table.ItemCount == 0 ? 2 : (int) description.Table.ItemCount;
         }
 
-        public async Task<Quote> GetQuoteById(int id)
+        public async Task<Quote> GetQuoteById(string id)
         {
-            GetItemRequest itemRequest = new GetItemRequest
-            {
-                TableName = QUOTES_TABLE,
-                Key = new Dictionary<string, AttributeValue>
-                {
-                    {QUOTES_TABLE_HASH_KEY, new AttributeValue{ N = id.ToString() } }
-                }
-            };
-
-            GetItemResponse response = await _client.GetItemAsync(itemRequest);
-            if (response.HttpStatusCode == System.Net.HttpStatusCode.BadRequest ||
-                // Id does not exist
-                !response.Item.ContainsKey(QUOTES_TABLE_HASH_KEY))
-                // The reason for BadRequest when item does not exist is because of AWS instead 404
+            List<Quote> quotes = await getQuotesByIds(new List<string>{ id});
+            if (quotes == null || quotes.Count < 1)
                 return null;
 
-            return Quote.ToQuoteFromTable(response.Item);
+            return quotes[0];
         }
 
         private async Task<List<Quote>> getQuotesByIds(IEnumerable<string> ids)
@@ -275,7 +264,8 @@ namespace Quotey.Services
                 Key = new Dictionary<string, AttributeValue>
                 {
                     {QUOTES_AUTHORS_TABLE_HASH_KEY, new AttributeValue{ S = author } }
-                }
+                },
+                
             };
 
             GetItemResponse authorResponse = await _client.GetItemAsync(authorRequest);
@@ -285,7 +275,17 @@ namespace Quotey.Services
                 return null;
 
             // For data aggregation that is why will not map from string to int for id, will use it as string
-            List<string> idsStrings = authorResponse.Item[QUOTES_AUTHORS_TABLE_QUOTES_IDS].NS;
+            List<string> idsStrings = new List<string>(Math.Min(authorResponse.Item.Count, amount));
+            foreach (string id in authorResponse.Item[QUOTES_AUTHORS_TABLE_QUOTES_IDS].NS)
+            {
+                // To limit how many to fetch
+                if (amount < 1)
+                    break;
+
+                idsStrings.Add(id);
+                amount--;
+            }
+
             return await getQuotesByIds(idsStrings);
         }
 

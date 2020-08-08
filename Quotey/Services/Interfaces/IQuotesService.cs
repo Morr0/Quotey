@@ -10,7 +10,7 @@ namespace Quotey.Services
     {
         // Quotes Table
         Task<Quote> GetRandomQuote();
-        Task<Quote> GetQuoteById(int id);
+        Task<Quote> GetQuoteById(string id);
         Task<List<Quote>> GetRandomQuotes(int amount);
 
         // Authors Table
