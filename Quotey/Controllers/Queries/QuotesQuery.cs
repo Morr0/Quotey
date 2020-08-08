@@ -11,6 +11,9 @@ namespace Quotey.Controllers.Queries
         [NotNull]
         public int? Id { get; set; }
 
+        [NotNull]
+        public string Author { get; set; }
+
         // Amount = size of page
         private static int MAX_AMOUNT = 10;
         private static int DEFAULT_AMOUNT = 1; // 1 because is shared with many other requests

@@ -23,7 +23,7 @@ namespace Quotey.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAuthors([FromQuery] AuthorsQuery query)
         {
-            return Ok(await _quotesService.GetAuthors());
+            return Ok(await _quotesService.GetAuthors(query.Amount));
         }
     }
 }

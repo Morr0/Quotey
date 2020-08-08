@@ -23,6 +23,7 @@ namespace Quotey.Services
         // Quotes authors table
         public static string QUOTES_AUTHORS_TABLE = "quotey_quote_author";
         public static string QUOTES_AUTHORS_TABLE_HASH_KEY = "Author";
+        public static string QUOTES_AUTHORS_TABLE_QUOTES_IDS = "QuotesIds";
 
         #endregion
 
@@ -219,14 +220,41 @@ namespace Quotey.Services
             return Quote.ToQuoteFromTable(response.Item);
         }
 
+        private async Task<List<Quote>> getQuotesByIds(List<string> ids)
+        {
+            // ETL
+            List<Dictionary<string, AttributeValue>> listOfIdsToBeFetched 
+                = new List<Dictionary<string, AttributeValue>>();
+            foreach (string id in ids)
+            {
+                listOfIdsToBeFetched.Add(new Dictionary<string, AttributeValue>
+                {
+                    {QUOTES_TABLE_HASH_KEY, new AttributeValue{N = id} }
+                });
+            }
+
+            BatchGetItemRequest request = new BatchGetItemRequest(new Dictionary<string, KeysAndAttributes>
+            { {QUOTES_TABLE, new KeysAndAttributes { Keys =  listOfIdsToBeFetched } } });
+            BatchGetItemResponse response = await _client.BatchGetItemAsync(request);
+
+            // Extract data from the complex structure of response
+            // Will return records
+            List<Quote> quotes = new List<Quote>();
+            foreach (Dictionary<string, AttributeValue> pair in response.Responses[QUOTES_TABLE])
+            {
+                quotes.Add(Quote.ToQuoteFromTable(pair));
+            }
+
+            return quotes;
+        }
+
         #endregion
 
         #region quotes by authors
 
-        public async Task<List<string>> GetAuthors()
+        public async Task<List<string>> GetAuthors(int amount = 10)
         {
             int count = await getTableCount(QUOTES_AUTHORS_TABLE);
-            int amount = 10;
             amount = Math.Min(count, amount);
 
             // Because we are fetching the authors without a specific filter
@@ -248,9 +276,30 @@ namespace Quotey.Services
             return authors;
         }
 
-        public Task<List<Quote>> GetQuotesByAuthorName()
+        public async Task<List<Quote>> GetQuotesByAuthorName(string author, int amount)
         {
-            throw new NotImplementedException();
+            // Get author, if does not exist return null
+            GetItemRequest authorRequest = new GetItemRequest
+            {
+                TableName = QUOTES_AUTHORS_TABLE,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    {QUOTES_AUTHORS_TABLE_HASH_KEY, new AttributeValue{ S = author } }
+                }
+            };
+
+            GetItemResponse authorResponse = await _client.GetItemAsync(authorRequest);
+            Console.WriteLine(authorResponse.HttpStatusCode);
+            if (authorResponse.HttpStatusCode == System.Net.HttpStatusCode.BadRequest)
+                return null; // Just because anything has happened, most likely author does not exist
+
+            // If no quotes from the author
+            if (!authorResponse.Item.ContainsKey(QUOTES_AUTHORS_TABLE_QUOTES_IDS))
+                return new List<Quote>();
+
+            // For data aggregation that is why will not map from string to int for id, will use it as string
+            List<string> idsStrings = authorResponse.Item[QUOTES_AUTHORS_TABLE_QUOTES_IDS].NS;
+            return await getQuotesByIds(idsStrings);
         }
 
         #endregion
