@@ -74,5 +74,15 @@ namespace Quotey.Controllers
 
             return Ok(_mapper.Map<List<QuoteReadDTO>>(quotes));
         }
+
+        // Adding new quotes
+        [HttpPost]
+        public async Task<IActionResult> Submit([FromBody] QuoteWriteDTO quote)
+        {
+            if (!(await  _quotesService.SubmitQuote(quote)))
+                return BadRequest();
+
+            return Ok();
+        }
     }
 }

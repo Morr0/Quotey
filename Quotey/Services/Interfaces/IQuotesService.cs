@@ -17,5 +17,7 @@ namespace Quotey.Services
         Task<List<string>> GetAuthors(int amount);
         Task<List<Quote>> GetQuotesByAuthorName(string author, int amount);
 
+        Task<bool> SubmitQuote(QuoteWriteDTO quote);
+
     }
 }

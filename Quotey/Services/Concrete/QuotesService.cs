@@ -8,6 +8,7 @@ using Quotey.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace Quotey.Services
@@ -211,6 +212,30 @@ namespace Quotey.Services
             }
 
             return await getQuotesByIds(idsStrings);
+        }
+
+        #endregion
+
+        #region quote proposals
+
+        public async Task<bool> SubmitQuote(QuoteWriteDTO quote)
+        {
+            Dictionary<string, AttributeValue> attributes = new Dictionary<string, AttributeValue>
+            {
+                {QUOTES_PROPOSAL_TABLE_HASH_KEY, new AttributeValue{ S = DateTime.UtcNow.ToString() } },
+                {"Text", new AttributeValue{ S = quote.Text } },
+                {"Quoter", new AttributeValue{ S = quote.Quoter } },
+                {"SubmitterEmail", new AttributeValue{ S = quote.SubmitterEmail } },
+            };
+
+            PutItemRequest request = new PutItemRequest
+            {
+                TableName = QUOTES_PROPOSAL_TABLE,
+                Item = attributes
+            };
+
+            PutItemResponse response = await _client.PutItemAsync(request);
+            return response.HttpStatusCode == HttpStatusCode.OK;
         }
 
         #endregion
