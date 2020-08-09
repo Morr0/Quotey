@@ -8,6 +8,7 @@ using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Quotey.Controllers.Queries;
+using Quotey.Core.Models;
 using Quotey.Models;
 using Quotey.Services;
 

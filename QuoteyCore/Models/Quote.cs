@@ -1,22 +1,8 @@
 ﻿using Amazon.DynamoDBv2.Model;
-using AutoMapper;
-using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Threading.Tasks;
 
-namespace Quotey.Models
+namespace Quotey.Core.Models
 {
-    public class QuoteMappingProfile : Profile
-    {
-        public QuoteMappingProfile()
-        {
-            CreateMap<Quote, QuoteReadDTO>();
-        }
-    }
-
     public class Quote
     {
         public int Id { get; set; }
@@ -53,18 +39,5 @@ namespace Quotey.Models
         public string Text { get; set; }
 
         public string Quoter { get; set; }
-    }
-
-    // Do not map this as it is not currently important since it has to go to approvals first
-    public class QuoteWriteDTO
-    {
-        [Required]
-        [NotNull]
-        public string Text { get; set; }
-        [NotNull]
-        public string Quoter { get; set; } = "Wise person";
-        [Required]
-        [NotNull]
-        public string SubmitterEmail { get; set; }
     }
 }

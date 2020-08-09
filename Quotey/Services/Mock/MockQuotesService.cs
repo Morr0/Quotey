@@ -1,4 +1,5 @@
-﻿using Quotey.Models;
+﻿using Quotey.Core.Models;
+using Quotey.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;

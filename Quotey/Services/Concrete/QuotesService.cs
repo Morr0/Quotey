@@ -4,6 +4,7 @@ using Amazon.DynamoDBv2.Model;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.S3.Model;
 using Microsoft.AspNetCore.Http;
+using Quotey.Core.Models;
 using Quotey.Models;
 using System;
 using System.Collections.Generic;
