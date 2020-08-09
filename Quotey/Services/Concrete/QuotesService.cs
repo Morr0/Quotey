@@ -21,6 +21,10 @@ namespace Quotey.Services
         public static string QUOTES_TABLE = "quotey_quote";
         public static string QUOTES_TABLE_HASH_KEY = "Id";
 
+        // Quotes proposals table
+        public static string QUOTES_PROPOSAL_TABLE = "quotey_quote_proposal";
+        public static string QUOTES_PROPOSAL_TABLE_HASH_KEY = "DateCreated";
+
         // Quotes authors table
         public static string QUOTES_AUTHORS_TABLE = "quotey_quote_author";
         public static string QUOTES_AUTHORS_TABLE_HASH_KEY = "Author";
@@ -49,97 +53,17 @@ namespace Quotey.Services
 
         private async Task setupTablesIfNotSetup()
         {
-            #region quotey_quote
-            bool quoteyQuoteTableExists = false;
+            // Main quotes table.
+            await DBUtils.CreateTableIfDoesNotExist(_client, QUOTES_TABLE, QUOTES_TABLE_HASH_KEY, true);
 
-            // Check for whether the quotey_quote table exists
-            try
-            {
-                await _client.DescribeTableAsync(QUOTES_TABLE);
-                quoteyQuoteTableExists = true;
-            } catch (ResourceNotFoundException) { }
-
-            // Create table if does not exist
-            if (!quoteyQuoteTableExists)
-            {
-                Console.WriteLine("quotey_quote does not exist will try to create one");
-
-                // Table attributes
-                List<AttributeDefinition> attributes = new List<AttributeDefinition>
-                {
-                    // Only the indexes
-                    new AttributeDefinition(QUOTES_TABLE_HASH_KEY, ScalarAttributeType.N),
-                };
-
-                // Key Schema
-                List<KeySchemaElement> keySchema = new List<KeySchemaElement>
-                {
-                    new KeySchemaElement(QUOTES_TABLE_HASH_KEY, KeyType.HASH)
-                };
-
-                // Table creation request
-                CreateTableRequest req = new CreateTableRequest
-                {
-                    TableName = QUOTES_TABLE,
-                    KeySchema = keySchema,
-                    AttributeDefinitions = attributes,
-                    BillingMode = BillingMode.PAY_PER_REQUEST,
-                };
-
-                CreateTableResponse res = await _client.CreateTableAsync(req);
-                if (res.HttpStatusCode != System.Net.HttpStatusCode.OK)
-                    throw new Exception("Could not create table quotey_quote");
-
-                Console.WriteLine("quotey_quote successfully created");
-            }
-            #endregion
-
-            #region quotey_quote_author
             // Motivation: to not use GSI on other tables and worry about provisioning
             // for each new author, store a new record of hash key (Author) and
             // an array of quote primary keys assosciated with it (Quotes).
+            await DBUtils.CreateTableIfDoesNotExist(_client, QUOTES_AUTHORS_TABLE, QUOTES_AUTHORS_TABLE_HASH_KEY);
 
-            bool quoteyQuotesAuthorsTableExists = false;
-            try
-            {
-                await _client.DescribeTableAsync(QUOTES_AUTHORS_TABLE);
-                quoteyQuotesAuthorsTableExists = true;
-            } catch (ResourceNotFoundException) { }
-
-            if (!quoteyQuotesAuthorsTableExists)
-            {
-                Console.WriteLine("quotey_quote_author does not exist will try to create one");
-
-                // Table attributes
-                List<AttributeDefinition> attributes = new List<AttributeDefinition>
-                {
-                    // Only the indexes
-                    new AttributeDefinition(QUOTES_AUTHORS_TABLE_HASH_KEY, ScalarAttributeType.S),
-                };
-
-                // Key Schema
-                List<KeySchemaElement> keySchema = new List<KeySchemaElement>
-                {
-                    new KeySchemaElement(QUOTES_AUTHORS_TABLE_HASH_KEY, KeyType.HASH)
-                };
-
-                // Table creation request
-                CreateTableRequest req = new CreateTableRequest
-                {
-                    TableName = QUOTES_AUTHORS_TABLE,
-                    KeySchema = keySchema,
-                    AttributeDefinitions = attributes,
-                    BillingMode = BillingMode.PAY_PER_REQUEST,
-                };
-
-                CreateTableResponse res = await _client.CreateTableAsync(req);
-                if (res.HttpStatusCode != System.Net.HttpStatusCode.OK)
-                    throw new Exception("Could not create table quotey_quote_author");
-
-                Console.WriteLine("quotey_quote_author successfully created");
-            }
+            // Motivation: to publish only approved quotes on the main quotes table quotey_quote.
+            await DBUtils.CreateTableIfDoesNotExist(_client, QUOTES_PROPOSAL_TABLE, QUOTES_PROPOSAL_TABLE_HASH_KEY);
             
-            #endregion
         }
 
         #region quotes
