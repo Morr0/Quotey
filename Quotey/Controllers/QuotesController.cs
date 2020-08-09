@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.S3.Model;
 using AutoMapper;
@@ -80,10 +81,11 @@ namespace Quotey.Controllers
         [HttpPost]
         public async Task<IActionResult> Submit([FromBody] QuoteWriteDTO quote)
         {
-            if (!(await  _quotesService.SubmitQuote(quote)))
+            string referenceId = await _quotesService.SubmitQuote(quote);
+            if (string.IsNullOrEmpty(referenceId))
                 return BadRequest();
 
-            return Ok();
+            return Ok(new { referenceId });
         }
     }
 }

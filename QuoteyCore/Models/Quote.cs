@@ -17,6 +17,8 @@ namespace Quotey.Core.Models
 
         public string DateApproved { get; set; }
 
+        public string ReferenceId { get; set; }
+
         public static Quote ToQuoteFromTable(Dictionary<string, AttributeValue> item)
         {
             return new Quote

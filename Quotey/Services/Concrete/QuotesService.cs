@@ -221,12 +221,13 @@ namespace Quotey.Services
 
         #region quote proposals
 
-        public async Task<bool> SubmitQuote(QuoteWriteDTO quote)
+        public async Task<string> SubmitQuote(QuoteWriteDTO quote)
         {
+            string referenceId = Guid.NewGuid().ToString();
             Dictionary<string, AttributeValue> attributes = new Dictionary<string, AttributeValue>
             {
                 {QUOTES_PROPOSAL_TABLE_HASH_KEY, new AttributeValue{ S = DateTime.UtcNow.ToString() } },
-                {QUOTES_PROPOSAL_TABLE_SORT_KEY, new AttributeValue{ S = Guid.NewGuid().ToString() } },
+                {QUOTES_PROPOSAL_TABLE_SORT_KEY, new AttributeValue{ S = referenceId } },
                 {"Text", new AttributeValue{ S = quote.Text } },
                 {"Quoter", new AttributeValue{ S = quote.Quoter } },
                 {"SubmitterEmail", new AttributeValue{ S = quote.SubmitterEmail } },
@@ -239,7 +240,7 @@ namespace Quotey.Services
             };
 
             PutItemResponse response = await _client.PutItemAsync(request);
-            return response.HttpStatusCode == HttpStatusCode.OK;
+            return response.HttpStatusCode == HttpStatusCode.OK? referenceId: null;
         }
 
         #endregion
