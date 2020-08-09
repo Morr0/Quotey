@@ -26,6 +26,7 @@ namespace Quotey.Services
         // Quotes proposals table
         public static string QUOTES_PROPOSAL_TABLE = "quotey_quote_proposal";
         public static string QUOTES_PROPOSAL_TABLE_HASH_KEY = "DateCreated";
+        public static string QUOTES_PROPOSAL_TABLE_SORT_KEY = "ReferenceId";
 
         // Quotes authors table
         public static string QUOTES_AUTHORS_TABLE = "quotey_quote_author";
@@ -64,7 +65,8 @@ namespace Quotey.Services
             await DBUtils.CreateTableIfDoesNotExist(_client, QUOTES_AUTHORS_TABLE, QUOTES_AUTHORS_TABLE_HASH_KEY);
 
             // Motivation: to publish only approved quotes on the main quotes table quotey_quote.
-            await DBUtils.CreateTableIfDoesNotExist(_client, QUOTES_PROPOSAL_TABLE, QUOTES_PROPOSAL_TABLE_HASH_KEY);
+            await DBUtils.CreateTableIfDoesNotExist(_client, QUOTES_PROPOSAL_TABLE, QUOTES_PROPOSAL_TABLE_HASH_KEY
+                , false, QUOTES_PROPOSAL_TABLE_SORT_KEY, false);
             
         }
 
@@ -224,6 +226,7 @@ namespace Quotey.Services
             Dictionary<string, AttributeValue> attributes = new Dictionary<string, AttributeValue>
             {
                 {QUOTES_PROPOSAL_TABLE_HASH_KEY, new AttributeValue{ S = DateTime.UtcNow.ToString() } },
+                {QUOTES_PROPOSAL_TABLE_SORT_KEY, new AttributeValue{ S = Guid.NewGuid().ToString() } },
                 {"Text", new AttributeValue{ S = quote.Text } },
                 {"Quoter", new AttributeValue{ S = quote.Quoter } },
                 {"SubmitterEmail", new AttributeValue{ S = quote.SubmitterEmail } },
