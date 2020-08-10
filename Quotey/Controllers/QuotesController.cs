@@ -26,12 +26,6 @@ namespace Quotey.Controllers
         [HttpGet]
         public async Task<IActionResult> GetRandomQuote([FromQuery] QuotesQuery query)
         {
-            Console.WriteLine(query.Amount);
-            if (!string.IsNullOrEmpty(query.Author))
-            {
-                return await GetQuotesByAuthor(query);
-            }
-
             // KEEP IT LAST because it will mess up the pagination otherwise
             if (query.Amount != 1)
             {
@@ -60,16 +54,6 @@ namespace Quotey.Controllers
         {
             return Ok(_mapper.Map<List<QuoteReadDTO>>
                 (await _quotesService.GetRandomQuotes(query.Amount)));
-        }
-
-        // Private for seperation of concerns
-        private async Task<IActionResult> GetQuotesByAuthor([FromBody] QuotesQuery query)
-        {
-            List<Quote> quotes = await _quotesService.GetQuotesByAuthorName(query.Author, query.Amount);
-            if (quotes == null)
-                return NotFound();
-
-            return Ok(_mapper.Map<List<QuoteReadDTO>>(quotes));
         }
 
         // Adding new quotes

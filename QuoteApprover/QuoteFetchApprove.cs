@@ -5,8 +5,6 @@ using Quotey.Core.Models;
 using QuoteyCore.Data;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace QuoteApprover
@@ -78,7 +76,6 @@ namespace QuoteApprover
                 Console.WriteLine("This was approved");
 
                 AssignId(quote);
-                AssignAuthor(ref quotersQuotes, quote);
                 approvedQuotes.AddLast(quote);
             }
 
@@ -109,32 +106,6 @@ namespace QuoteApprover
             // TODO temporary
             tasks.Add(WriteBatch(batch));
 
-            currentCount = 0;
-            LinkedList<PutRequest> authorsRequests = new LinkedList<PutRequest>();
-            // For authors now
-            foreach (var pair in quotersQuotes)
-            {
-                /*if (currentCount > 25 || currentCount > quotes.Count())
-                {
-                    Task task = WriteBatch(authorsRequests);
-                    tasks.Add(task);
-
-                    // Reset the batch
-                    currentCount = 0;
-                    authorsRequests = new LinkedList<PutRequest>();
-                }*/
-
-                PutRequest request = new PutRequest(new Dictionary<string, AttributeValue>
-                {
-                    {DataDefinitions.QUOTES_AUTHORS_TABLE_HASH_KEY, new AttributeValue{ S = pair.Key } },
-                    {DataDefinitions.QUOTES_AUTHORS_TABLE_QUOTES_IDS, new AttributeValue{ NS = pair.Value} }
-                });
-
-                authorsRequests.AddLast(request);
-                currentCount++;
-            }
-            tasks.Add(WriteBatch(authorsRequests));
-
             await Task.WhenAll(tasks);
         }
 
@@ -159,38 +130,10 @@ namespace QuoteApprover
             Console.WriteLine($"quotes batch response: {batchResponse.HttpStatusCode}");
         }
 
-        private async Task WriteBatch(IEnumerable<PutRequest> requests)
-        {
-            List<WriteRequest> writeRequests = new List<WriteRequest>();
-            foreach (var putReq in requests)
-            {
-                writeRequests.Add(new WriteRequest(putReq));
-            }
-
-            BatchWriteItemRequest batchWrite = new BatchWriteItemRequest
-            {
-                RequestItems = new Dictionary<string, List<WriteRequest>>
-                {
-                    {DataDefinitions.QUOTES_AUTHORS_TABLE, writeRequests }
-                }
-            };
-
-            BatchWriteItemResponse batchResposnse = await _client.BatchWriteItemAsync(batchWrite);
-            Console.WriteLine($"Authors batch request: {batchResposnse.HttpStatusCode}");
-        }
-
         private void AssignId(Quote quote)
         {
             quote.Id = currentQuotesTableCount;
             currentQuotesTableCount++;
-        }
-
-        private void AssignAuthor(ref Dictionary<string, List<string>> authorsQuotes, Quote quote)
-        {
-            if (!authorsQuotes.ContainsKey(quote.Quoter))
-                authorsQuotes.Add(quote.Quoter, new List<string>());
-
-            authorsQuotes[quote.Quoter].Add(quote.Id.ToString());
         }
 
         // TODO implement this to disallow bad wording
