@@ -11,7 +11,8 @@ namespace Quotey.Models
         [NotNull]
         public string Text { get; set; }
         [NotNull]
-        public string Quoter { get; set; } = "Wise person";
+        [Required]
+        public string Quoter { get; set; }
         [Required]
         [NotNull]
         public string SubmitterEmail { get; set; }
