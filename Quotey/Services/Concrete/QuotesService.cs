@@ -1,11 +1,9 @@
 ﻿using Amazon;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using Amazon.Extensions.NETCore.Setup;
-using Amazon.S3.Model;
-using Microsoft.AspNetCore.Http;
 using Quotey.Core.Models;
 using Quotey.Models;
+using QuoteyCore.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,25 +14,6 @@ namespace Quotey.Services
 {
     public class QuotesService : IQuotesService
     {
-
-        #region table definitions
-
-        // Quotes table
-        public static string QUOTES_TABLE = "quotey_quote";
-        public static string QUOTES_TABLE_HASH_KEY = "Id";
-
-        // Quotes proposals table
-        public static string QUOTES_PROPOSAL_TABLE = "quotey_quote_proposal";
-        public static string QUOTES_PROPOSAL_TABLE_HASH_KEY = "DateCreated";
-        public static string QUOTES_PROPOSAL_TABLE_SORT_KEY = "ReferenceId";
-
-        // Quotes authors table
-        public static string QUOTES_AUTHORS_TABLE = "quotey_quote_author";
-        public static string QUOTES_AUTHORS_TABLE_HASH_KEY = "Author";
-        public static string QUOTES_AUTHORS_TABLE_QUOTES_IDS = "QuotesIds";
-
-        #endregion
-
         private AmazonDynamoDBClient _client;
         private Random _random;
 
@@ -57,16 +36,19 @@ namespace Quotey.Services
         private async Task setupTablesIfNotSetup()
         {
             // Main quotes table.
-            await DBUtils.CreateTableIfDoesNotExist(_client, QUOTES_TABLE, QUOTES_TABLE_HASH_KEY, true);
+            await DBUtils.CreateTableIfDoesNotExist(_client, DataDefinitions.QUOTES_TABLE,
+                DataDefinitions.QUOTES_TABLE_HASH_KEY, true);
 
             // Motivation: to not use GSI on other tables and worry about provisioning
             // for each new author, store a new record of hash key (Author) and
             // an array of quote primary keys assosciated with it (Quotes).
-            await DBUtils.CreateTableIfDoesNotExist(_client, QUOTES_AUTHORS_TABLE, QUOTES_AUTHORS_TABLE_HASH_KEY);
+            await DBUtils.CreateTableIfDoesNotExist(_client, DataDefinitions.QUOTES_AUTHORS_TABLE, 
+                DataDefinitions.QUOTES_AUTHORS_TABLE_HASH_KEY);
 
             // Motivation: to publish only approved quotes on the main quotes table quotey_quote.
-            await DBUtils.CreateTableIfDoesNotExist(_client, QUOTES_PROPOSAL_TABLE, QUOTES_PROPOSAL_TABLE_HASH_KEY
-                , false, QUOTES_PROPOSAL_TABLE_SORT_KEY, false);
+            await DBUtils.CreateTableIfDoesNotExist(_client, DataDefinitions.QUOTES_PROPOSAL_TABLE,
+                DataDefinitions.QUOTES_PROPOSAL_TABLE_HASH_KEY
+                , false, DataDefinitions.QUOTES_PROPOSAL_TABLE_SORT_KEY, false);
             
         }
 
@@ -74,13 +56,13 @@ namespace Quotey.Services
 
         public async Task<Quote> GetRandomQuote()
         { 
-            int randomQuoteId = _random.Next(1, (await getTableCount(QUOTES_TABLE)) + 1);
+            int randomQuoteId = _random.Next(1, (await getTableCount(DataDefinitions.QUOTES_TABLE)) + 1);
             return await GetQuoteById(randomQuoteId.ToString());
         }
 
         public async Task<List<Quote>> GetRandomQuotes(int amount)
         {
-            int count = await getTableCount(QUOTES_TABLE);
+            int count = await getTableCount(DataDefinitions.QUOTES_TABLE);
             // To not exceed over limit of count
             int amountLeft = Math.Min(count, amount);
 
@@ -100,7 +82,7 @@ namespace Quotey.Services
                     // It is a long tree since batch item fetch can allow multiple keys
                     ids.Add(randId);
                     idsValuesToRequest.Add(new Dictionary<string, AttributeValue>
-                    { {QUOTES_TABLE_HASH_KEY, new AttributeValue { N = randId } } });
+                    { {DataDefinitions.QUOTES_TABLE_HASH_KEY, new AttributeValue { N = randId } } });
 
                     amountLeft--;
                 } 
@@ -136,18 +118,18 @@ namespace Quotey.Services
             {
                 listOfIdsToBeFetched.Add(new Dictionary<string, AttributeValue>
                 {
-                    {QUOTES_TABLE_HASH_KEY, new AttributeValue{N = id} }
+                    {DataDefinitions.QUOTES_TABLE_HASH_KEY, new AttributeValue{N = id} }
                 });
             }
 
             BatchGetItemRequest request = new BatchGetItemRequest(new Dictionary<string, KeysAndAttributes>
-            { {QUOTES_TABLE, new KeysAndAttributes { Keys =  listOfIdsToBeFetched } } });
+            { {DataDefinitions.QUOTES_TABLE, new KeysAndAttributes { Keys =  listOfIdsToBeFetched } } });
             BatchGetItemResponse response = await _client.BatchGetItemAsync(request);
 
             // Extract data from the complex structure of response
             // Will return records
             List<Quote> quotes = new List<Quote>();
-            foreach (Dictionary<string, AttributeValue> pair in response.Responses[QUOTES_TABLE])
+            foreach (Dictionary<string, AttributeValue> pair in response.Responses[DataDefinitions.QUOTES_TABLE])
             {
                 quotes.Add(Quote.ToQuoteFromTable(pair));
             }
@@ -161,13 +143,13 @@ namespace Quotey.Services
 
         public async Task<List<string>> GetAuthors(int amount = 10)
         {
-            int count = await getTableCount(QUOTES_AUTHORS_TABLE);
+            int count = await getTableCount(DataDefinitions.QUOTES_AUTHORS_TABLE);
             amount = Math.Min(count, amount);
 
             // Because we are fetching the authors without a specific filter
             ScanRequest scanRequest = new ScanRequest
             {
-                TableName = QUOTES_AUTHORS_TABLE,
+                TableName = DataDefinitions.QUOTES_AUTHORS_TABLE,
                 Limit = amount,
             };
 
@@ -177,7 +159,7 @@ namespace Quotey.Services
             List<string> authors = new List<string>(response.Count);
             foreach (Dictionary<string, AttributeValue> pair in response.Items)
             {
-                authors.Add(pair[QUOTES_AUTHORS_TABLE_HASH_KEY].S);
+                authors.Add(pair[DataDefinitions.QUOTES_AUTHORS_TABLE_HASH_KEY].S);
             }
 
             return authors;
@@ -188,10 +170,10 @@ namespace Quotey.Services
             // Get author, if does not exist return null
             GetItemRequest authorRequest = new GetItemRequest
             {
-                TableName = QUOTES_AUTHORS_TABLE,
+                TableName = DataDefinitions.QUOTES_AUTHORS_TABLE,
                 Key = new Dictionary<string, AttributeValue>
                 {
-                    {QUOTES_AUTHORS_TABLE_HASH_KEY, new AttributeValue{ S = author } }
+                    {DataDefinitions.QUOTES_AUTHORS_TABLE_HASH_KEY, new AttributeValue{ S = author } }
                 },
                 
             };
@@ -199,12 +181,12 @@ namespace Quotey.Services
             GetItemResponse authorResponse = await _client.GetItemAsync(authorRequest);
             if (authorResponse.HttpStatusCode == System.Net.HttpStatusCode.BadRequest ||
                 // Does not exist
-                !authorResponse.Item.ContainsKey(QUOTES_AUTHORS_TABLE_QUOTES_IDS))
+                !authorResponse.Item.ContainsKey(DataDefinitions.QUOTES_AUTHORS_TABLE_QUOTES_IDS))
                 return null;
 
             // For data aggregation that is why will not map from string to int for id, will use it as string
             List<string> idsStrings = new List<string>(Math.Min(authorResponse.Item.Count, amount));
-            foreach (string id in authorResponse.Item[QUOTES_AUTHORS_TABLE_QUOTES_IDS].NS)
+            foreach (string id in authorResponse.Item[DataDefinitions.QUOTES_AUTHORS_TABLE_QUOTES_IDS].NS)
             {
                 // To limit how many to fetch
                 if (amount < 1)
@@ -226,8 +208,8 @@ namespace Quotey.Services
             string referenceId = Guid.NewGuid().ToString();
             Dictionary<string, AttributeValue> attributes = new Dictionary<string, AttributeValue>
             {
-                {QUOTES_PROPOSAL_TABLE_HASH_KEY, new AttributeValue{ S = DateTime.UtcNow.ToString() } },
-                {QUOTES_PROPOSAL_TABLE_SORT_KEY, new AttributeValue{ S = referenceId } },
+                {DataDefinitions.QUOTES_PROPOSAL_TABLE_HASH_KEY, new AttributeValue{ S = DateTime.UtcNow.ToString() } },
+                {DataDefinitions.QUOTES_PROPOSAL_TABLE_SORT_KEY, new AttributeValue{ S = referenceId } },
                 {"Text", new AttributeValue{ S = quote.Text } },
                 {"Quoter", new AttributeValue{ S = quote.Quoter } },
                 {"SubmitterEmail", new AttributeValue{ S = quote.SubmitterEmail } },
@@ -235,7 +217,7 @@ namespace Quotey.Services
 
             PutItemRequest request = new PutItemRequest
             {
-                TableName = QUOTES_PROPOSAL_TABLE,
+                TableName = DataDefinitions.QUOTES_PROPOSAL_TABLE,
                 Item = attributes
             };
 
