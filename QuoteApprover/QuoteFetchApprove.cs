@@ -114,7 +114,7 @@ namespace QuoteApprover
             // For authors now
             foreach (var pair in quotersQuotes)
             {
-                if (currentCount > 25 || currentCount > quotes.Count())
+                /*if (currentCount > 25 || currentCount > quotes.Count())
                 {
                     Task task = WriteBatch(authorsRequests);
                     tasks.Add(task);
@@ -122,7 +122,7 @@ namespace QuoteApprover
                     // Reset the batch
                     currentCount = 0;
                     authorsRequests = new LinkedList<PutRequest>();
-                }
+                }*/
 
                 PutRequest request = new PutRequest(new Dictionary<string, AttributeValue>
                 {
@@ -133,6 +133,7 @@ namespace QuoteApprover
                 authorsRequests.AddLast(request);
                 currentCount++;
             }
+            tasks.Add(WriteBatch(authorsRequests));
 
             await Task.WhenAll(tasks);
         }
@@ -160,7 +161,22 @@ namespace QuoteApprover
 
         private async Task WriteBatch(IEnumerable<PutRequest> requests)
         {
+            List<WriteRequest> writeRequests = new List<WriteRequest>();
+            foreach (var putReq in requests)
+            {
+                writeRequests.Add(new WriteRequest(putReq));
+            }
 
+            BatchWriteItemRequest batchWrite = new BatchWriteItemRequest
+            {
+                RequestItems = new Dictionary<string, List<WriteRequest>>
+                {
+                    {DataDefinitions.QUOTES_AUTHORS_TABLE, writeRequests }
+                }
+            };
+
+            BatchWriteItemResponse batchResposnse = await _client.BatchWriteItemAsync(batchWrite);
+            Console.WriteLine($"Authors batch request: {batchResposnse.HttpStatusCode}");
         }
 
         private void AssignId(Quote quote)
