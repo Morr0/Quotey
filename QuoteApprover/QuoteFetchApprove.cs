@@ -45,21 +45,37 @@ namespace QuoteApprover
 
         private async Task<IEnumerable<Quote>> GetAllQuotesToBeApproved()
         {
+            // One time use variable to kick off the loop below for an initial scan
+            bool initial = true;
+
             ScanRequest scanRequest = new ScanRequest
             {
                 TableName = DataDefinitions.QUOTES_PROPOSAL_TABLE,
             };
 
-            Console.WriteLine("Scanning proposals");
-            ScanResponse scanResponse = await _client.ScanAsync(scanRequest);
             LinkedList<Quote> quotes = new LinkedList<Quote>();
-            foreach (var attribute in scanResponse.Items)
+
+            Console.WriteLine("Scanning proposals");
+            // The reason for the loop is to handle for when having over 1MB of proposals
+            Dictionary<string, AttributeValue> lastKey = null;
+            while (initial || ( lastKey != null && lastKey.Count > 0))
             {
-                quotes.AddLast(QuoteExtensions.CreateQuoteFromQuoteProposal(attribute));
+                Console.WriteLine("Scan");
+
+                // The last key is for pagination and this case to tell where to start for the next scan
+                scanRequest.ExclusiveStartKey = lastKey;
+                ScanResponse scanResponse = await _client.ScanAsync(scanRequest);
+                lastKey = scanResponse.LastEvaluatedKey;
+
+                foreach (var attribute in scanResponse.Items)
+                {
+                    quotes.AddLast(QuoteExtensions.CreateQuoteFromQuoteProposal(attribute));
+                }
+
+                if (initial)
+                    initial = false;
             }
             Console.WriteLine("Got proposals");
-
-            // TODO handle over 1MB of scan limit to scan the next items
 
             return quotes;
         }
