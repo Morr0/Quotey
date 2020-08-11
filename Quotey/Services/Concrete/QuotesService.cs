@@ -39,12 +39,6 @@ namespace Quotey.Services
             await DBUtils.CreateTableIfDoesNotExist(_client, DataDefinitions.QUOTES_TABLE,
                 DataDefinitions.QUOTES_TABLE_HASH_KEY, true);
 
-            // Motivation: to not use GSI on other tables and worry about provisioning
-            // for each new author, store a new record of hash key (Author) and
-            // an array of quote primary keys assosciated with it (Quotes).
-            await DBUtils.CreateTableIfDoesNotExist(_client, DataDefinitions.QUOTES_AUTHORS_TABLE, 
-                DataDefinitions.QUOTES_AUTHORS_TABLE_HASH_KEY);
-
             // Motivation: to publish only approved quotes on the main quotes table quotey_quote.
             await DBUtils.CreateTableIfDoesNotExist(_client, DataDefinitions.QUOTES_PROPOSAL_TABLE,
                 DataDefinitions.QUOTES_PROPOSAL_TABLE_HASH_KEY
@@ -135,68 +129,6 @@ namespace Quotey.Services
             }
 
             return quotes;
-        }
-
-        #endregion
-
-        #region quotes by authors
-
-        public async Task<List<string>> GetAuthors(int amount = 10)
-        {
-            int count = await getTableCount(DataDefinitions.QUOTES_AUTHORS_TABLE);
-            amount = Math.Min(count, amount);
-
-            // Because we are fetching the authors without a specific filter
-            ScanRequest scanRequest = new ScanRequest
-            {
-                TableName = DataDefinitions.QUOTES_AUTHORS_TABLE,
-                Limit = amount,
-            };
-
-            // Scan
-            ScanResponse response = await _client.ScanAsync(scanRequest);
-
-            List<string> authors = new List<string>(response.Count);
-            foreach (Dictionary<string, AttributeValue> pair in response.Items)
-            {
-                authors.Add(pair[DataDefinitions.QUOTES_AUTHORS_TABLE_HASH_KEY].S);
-            }
-
-            return authors;
-        }
-
-        public async Task<List<Quote>> GetQuotesByAuthorName(string author, int amount)
-        {
-            // Get author, if does not exist return null
-            GetItemRequest authorRequest = new GetItemRequest
-            {
-                TableName = DataDefinitions.QUOTES_AUTHORS_TABLE,
-                Key = new Dictionary<string, AttributeValue>
-                {
-                    {DataDefinitions.QUOTES_AUTHORS_TABLE_HASH_KEY, new AttributeValue{ S = author } }
-                },
-                
-            };
-
-            GetItemResponse authorResponse = await _client.GetItemAsync(authorRequest);
-            if (authorResponse.HttpStatusCode == System.Net.HttpStatusCode.BadRequest ||
-                // Does not exist
-                !authorResponse.Item.ContainsKey(DataDefinitions.QUOTES_AUTHORS_TABLE_QUOTES_IDS))
-                return null;
-
-            // For data aggregation that is why will not map from string to int for id, will use it as string
-            List<string> idsStrings = new List<string>(Math.Min(authorResponse.Item.Count, amount));
-            foreach (string id in authorResponse.Item[DataDefinitions.QUOTES_AUTHORS_TABLE_QUOTES_IDS].NS)
-            {
-                // To limit how many to fetch
-                if (amount < 1)
-                    break;
-
-                idsStrings.Add(id);
-                amount--;
-            }
-
-            return await getQuotesByIds(idsStrings);
         }
 
         #endregion

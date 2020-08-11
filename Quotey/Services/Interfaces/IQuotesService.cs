@@ -14,10 +14,6 @@ namespace Quotey.Services
         Task<Quote> GetQuoteById(string id);
         Task<List<Quote>> GetRandomQuotes(int amount);
 
-        // Authors Table
-        Task<List<string>> GetAuthors(int amount);
-        Task<List<Quote>> GetQuotesByAuthorName(string author, int amount);
-
         Task<string> SubmitQuote(QuoteWriteDTO quote);
 
     }
