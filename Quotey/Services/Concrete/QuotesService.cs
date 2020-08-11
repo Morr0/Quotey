@@ -42,8 +42,8 @@ namespace Quotey.Services
             // Motivation: to publish only approved quotes on the main quotes table quotey_quote.
             await DBUtils.CreateTableIfDoesNotExist(_client, DataDefinitions.QUOTES_PROPOSAL_TABLE,
                 DataDefinitions.QUOTES_PROPOSAL_TABLE_HASH_KEY
-                , false, DataDefinitions.QUOTES_PROPOSAL_TABLE_SORT_KEY, false);
-            
+                , false, DataDefinitions.QUOTES_PROPOSAL_TABLE_SORT_KEY, false, 
+                DataDefinitions.QUOTES_PROPOSAL_TABLE_TTL);
         }
 
         #region quotes
