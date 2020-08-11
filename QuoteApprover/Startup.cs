@@ -29,6 +29,7 @@ namespace QuoteApprover
             services.AddControllers();
 
             Task.WaitAll((new QuoteFetchApprove()).Run());
+            Environment.Exit(0);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline

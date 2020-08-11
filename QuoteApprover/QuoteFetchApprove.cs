@@ -5,6 +5,8 @@ using Quotey.Core.Models;
 using QuoteyCore.Data;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace QuoteApprover
@@ -13,7 +15,6 @@ namespace QuoteApprover
     {
         private AmazonDynamoDBClient _client;
 
-        private int initialQuotesTableCount = 3;
         private int currentQuotesTableCount = 3;
 
         public QuoteFetchApprove()
@@ -26,18 +27,19 @@ namespace QuoteApprover
         {
             // Get initial tables counts
             Console.WriteLine("Getting quotes table description");
-            initialQuotesTableCount = (int) (await _client.DescribeTableAsync(DataDefinitions.QUOTES_PROPOSAL_TABLE)).Table.ItemCount;
-            currentQuotesTableCount = initialQuotesTableCount + 1;
+            currentQuotesTableCount = ((int)(await _client.DescribeTableAsync(DataDefinitions.QUOTES_PROPOSAL_TABLE))
+                .Table.ItemCount) + 1;
             Console.WriteLine($"The quotes table has {currentQuotesTableCount} records");
 
             // Start the pipeline
-            Console.WriteLine("1");
+            Console.WriteLine("Starting pipeline");
+            Console.WriteLine("Step 1");
             IEnumerable<Quote> quotes = await GetAllQuotesToBeApproved();
-            Console.WriteLine("2");
-            IEnumerable<Quote> approvedQuotes = GetApproved(ref quotes, out var quotersQuotes);
-            Console.WriteLine("3");
-            await AddAll(approvedQuotes, quotersQuotes);
-            Console.WriteLine("Finished");
+            Console.WriteLine("Step 2");
+            IEnumerable<Quote> approvedQuotes = GetApprovedProposals(ref quotes);
+            Console.WriteLine("Step 3");
+            await AddAll(approvedQuotes);
+            Console.WriteLine("Finished pipeline");
 
         }
 
@@ -62,11 +64,8 @@ namespace QuoteApprover
             return quotes;
         }
 
-        private IEnumerable<Quote> GetApproved(ref IEnumerable<Quote> toBeApproved, 
-            out Dictionary<string, List<string>>  quotersQuotes)
+        private IEnumerable<Quote> GetApprovedProposals(ref IEnumerable<Quote> toBeApproved)
         {
-            quotersQuotes = new Dictionary<string, List<string>>();
-
             LinkedList<Quote> approvedQuotes = new LinkedList<Quote>();
             foreach (Quote quote in toBeApproved)
             {
@@ -78,40 +77,46 @@ namespace QuoteApprover
                 AssignId(quote);
                 approvedQuotes.AddLast(quote);
             }
+            Console.WriteLine($"Total approved quotes {approvedQuotes.Count}");
 
             return approvedQuotes;
         }
 
-        private async Task AddAll(IEnumerable<Quote> quotes, Dictionary<string, List<string>> quotersQuotes)
+        private async Task AddAll(IEnumerable<Quote> quotes)
         {
-            List<Task> tasks = new List<Task>();
-
+            LinkedList<Quote> batchQuotes = new LinkedList<Quote>();
+            int count = quotes.Count();
             int currentCount = 0;
-            LinkedList<Quote> batch = new LinkedList<Quote>();
             foreach (Quote quote in quotes)
             {
-                /*if (currentCount > 25 || currentCount >= quotes.Count())
+                batchQuotes.AddLast(quote);
+
+                // Every 25 quotes starting from 25
+                if (currentCount > 0 && currentCount % 25 == 0)
                 {
-                    Task task = WriteBatch(batch);
-                    tasks.Add(task);
+                    await WriteBatch(batchQuotes);
+                    batchQuotes = new LinkedList<Quote>();
+                } 
+                // Only for the case when total quotes less than 25
+                else if (currentCount == (count - 1))
+                {
+                    await WriteBatch(batchQuotes);
+                }
 
-                    // Reset the batch
-                    currentCount = 0;
-                    batch = new LinkedList<Quote>();
-                }*/
-
-                batch.AddLast(quote);
                 currentCount++;
             }
-            // TODO temporary
-            tasks.Add(WriteBatch(batch));
-
-            await Task.WhenAll(tasks);
         }
 
-        // This processes 25 quotes at a time since the max is 25 as per dynamoDB
+        // This processes 25 quotes at a time since the max is 25 as per dynamoDB batch write
         private async Task WriteBatch(IEnumerable<Quote> batchQuotes)
         {
+            // There is this possibility when there is nothing to approve
+            if (batchQuotes.Count() == 0)
+            {
+                Console.WriteLine("Batch empty");
+                return;
+            }
+
             Console.WriteLine("Writing batch");
             Dictionary<string, List<WriteRequest>> writeRequests = new Dictionary<string, List<WriteRequest>>();
             writeRequests.Add(DataDefinitions.QUOTES_TABLE, new List<WriteRequest>());
@@ -126,6 +131,7 @@ namespace QuoteApprover
                 RequestItems = writeRequests
             };
 
+            Console.WriteLine("Before writing to dynamodb");
             BatchWriteItemResponse batchResponse = await _client.BatchWriteItemAsync(batchRequest);
             Console.WriteLine($"quotes batch response: {batchResponse.HttpStatusCode}");
         }
