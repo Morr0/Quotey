@@ -15,5 +15,6 @@ namespace QuoteyCore.Data
         public static string QUOTES_PROPOSAL_TABLE_HASH_KEY = "DateCreated";
         public static string QUOTES_PROPOSAL_TABLE_SORT_KEY = "ReferenceId";
         public static string QUOTES_PROPOSAL_TABLE_TTL = "TTL";
+        public static int QUOTES_PROPOSAL_TABLE_TTL_VALUE_HOURS = 27;
     }
 }

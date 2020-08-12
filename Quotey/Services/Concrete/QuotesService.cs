@@ -138,6 +138,10 @@ namespace Quotey.Services
         public async Task<string> SubmitQuote(QuoteWriteDTO quote)
         {
             string referenceId = Guid.NewGuid().ToString();
+            // The best way to get accurate timing
+            long ttlExpiryTimestamp = (long)DateTime.UtcNow.Subtract(DateTime.UnixEpoch)
+                .Add(TimeSpan.FromHours(DataDefinitions.QUOTES_PROPOSAL_TABLE_TTL_VALUE_HOURS)).TotalSeconds;
+
             Dictionary<string, AttributeValue> attributes = new Dictionary<string, AttributeValue>
             {
                 {DataDefinitions.QUOTES_PROPOSAL_TABLE_HASH_KEY, new AttributeValue{ S = DateTime.UtcNow.ToString() } },
@@ -145,6 +149,7 @@ namespace Quotey.Services
                 {"Text", new AttributeValue{ S = quote.Text } },
                 {"Quoter", new AttributeValue{ S = quote.Quoter } },
                 {"SubmitterEmail", new AttributeValue{ S = quote.SubmitterEmail } },
+                {DataDefinitions.QUOTES_PROPOSAL_TABLE_TTL, new AttributeValue{ N = ttlExpiryTimestamp.ToString() } }
             };
 
             PutItemRequest request = new PutItemRequest
